@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/hcl-lang/reference"
 	"github.com/hashicorp/hcl-lang/schema"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/zclconf/go-cty/cty"
 )
 
 func (d *Decoder) ReferenceOriginsTargetingPos(path lang.Path, file string, pos hcl.Pos) ReferenceOrigins {
@@ -178,11 +179,23 @@ func (d *PathDecoder) referenceOriginsInBody(body hcl.Body, bodySchema *schema.B
 		}
 	}
 
+	// Collect refs from unknown attributes if extension enabled
+	if bodySchema.Extensions != nil && bodySchema.Extensions.UnknownRefs {
+		origins = append(origins, d.collectUnknownAttributeOrigins(ctx, body, bodySchema)...)
+	}
+
 	for _, block := range content.Blocks {
 		if block.Body != nil {
 			bSchema, ok := bodySchema.Blocks[block.Type]
 			if !ok {
-				// skip unknown blocks
+				// Handle unknown blocks if extension enabled
+				if bodySchema.Extensions != nil && bodySchema.Extensions.UnknownRefs {
+					unknownSchema := &schema.BodySchema{
+						Extensions: &schema.BodyExtensions{UnknownRefs: true},
+					}
+					os, _ := d.referenceOriginsInBody(block.Body, unknownSchema)
+					origins = append(origins, os...)
+				}
 				continue
 			}
 			mergedSchema, _ := schemahelper.MergeBlockBodySchemas(block.Block, bSchema)
@@ -194,4 +207,48 @@ func (d *PathDecoder) referenceOriginsInBody(body hcl.Body, bodySchema *schema.B
 	}
 
 	return origins, impliedOrigins
+}
+
+// collectUnknownAttributeOrigins extracts reference origins from attributes
+// not defined in the schema. Uses DynamicPseudoType since type is unknown.
+func (d *PathDecoder) collectUnknownAttributeOrigins(ctx context.Context, body hcl.Body, bodySchema *schema.BodySchema) reference.Origins {
+	origins := make(reference.Origins, 0)
+
+	// Get all attributes from body
+	attrs, diags := body.JustAttributes()
+	if diags.HasErrors() {
+		return origins
+	}
+
+	for name, attr := range attrs {
+		// Skip if attribute is in schema (already processed)
+		if bodySchema.Attributes != nil {
+			if _, exists := bodySchema.Attributes[name]; exists {
+				continue
+			}
+		}
+		// Skip if AnyAttribute is defined (already processed)
+		if bodySchema.AnyAttribute != nil {
+			continue
+		}
+		// Skip count/for_each if extensions enabled
+		if bodySchema.Extensions != nil {
+			if bodySchema.Extensions.Count && name == "count" {
+				continue
+			}
+			if bodySchema.Extensions.ForEach && name == "for_each" {
+				continue
+			}
+		}
+
+		// Treat as AnyExpression with DynamicPseudoType
+		expr := d.newExpression(attr.Expr, schema.AnyExpression{
+			OfType: cty.DynamicPseudoType,
+		})
+		if refExpr, ok := expr.(ReferenceOriginsExpression); ok {
+			origins = append(origins, refExpr.ReferenceOrigins(ctx)...)
+		}
+	}
+
+	return origins
 }
