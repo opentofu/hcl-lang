@@ -26,12 +26,19 @@ func (d *PathDecoder) attrValueCompletionAtPos(ctx context.Context, attr *hclsyn
 	}
 	count := len(candidates.List)
 
+	seen := make(map[string]struct{})
 	if uint(count) < d.maxCandidates {
 		expr := d.newExpression(attr.Expr, schema.Constraint)
 		for _, candidate := range expr.CompletionAtPos(ctx, pos) {
 			if uint(count) >= d.maxCandidates {
 				return candidates, nil
 			}
+
+			key := fmt.Sprintf("%s %s", candidate.Label, candidate.TextEdit.Range)
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
 
 			candidates.List = append(candidates.List, candidate)
 			count++
