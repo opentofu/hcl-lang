@@ -5,7 +5,6 @@ package decoder
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -137,8 +136,8 @@ func TestCompletionAtPos_BodySchema_Extensions_SameBodyRefs(t *testing.T) {
 		},
 	}
 
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("%d-%s", i, tc.testName), func(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
 			f, _ := hclsyntax.ParseConfig([]byte(tc.cfg), "test.tf", hcl.InitialPos)
 
 			d := testPathDecoder(t, &PathContext{
@@ -748,8 +747,8 @@ variable "test" {
 		},
 	}
 
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("%d-%s", i, tc.testName), func(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
 			f, _ := hclsyntax.ParseConfig([]byte(tc.cfg), "test.tf", hcl.InitialPos)
 
 			d := testPathDecoder(t, &PathContext{
@@ -1263,8 +1262,8 @@ for_each =
 		},
 	}
 
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("%d-%s", i, tc.testName), func(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
 			f, _ := hclsyntax.ParseConfig([]byte(tc.cfg), "test.tf", hcl.InitialPos)
 
 			d := testPathDecoder(t, &PathContext{
@@ -1914,8 +1913,8 @@ func TestCompletionAtPos_BodySchema_Extensions_SelfRef(t *testing.T) {
 		},
 	}
 
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("%d-%s", i, tc.testName), func(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
 			f, _ := hclsyntax.ParseConfig([]byte(tc.cfg), "test.tf", hcl.InitialPos)
 
 			d := testPathDecoder(t, &PathContext{
@@ -2975,8 +2974,8 @@ resource "aws_elastic_beanstalk_environment" "example" {
 		},
 	}
 
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("%d-%s", i, tc.testName), func(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
 			f, _ := hclsyntax.ParseConfig([]byte(tc.cfg), "test.tf", hcl.InitialPos)
 
 			d := testPathDecoder(t, &PathContext{
