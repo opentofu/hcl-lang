@@ -19,7 +19,7 @@ import (
 )
 
 func TestCompletionAtPos_BodySchema_Extensions_SameBodyRefs(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	testCases := []struct {
 		testName           string
