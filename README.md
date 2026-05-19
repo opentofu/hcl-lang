@@ -1,4 +1,4 @@
-# hcl-lang [![Go Reference](https://pkg.go.dev/badge/github.com/hashicorp/hcl-lang.svg)](https://pkg.go.dev/github.com/hashicorp/hcl-lang)
+# hcl-lang [![Go Reference](https://pkg.go.dev/badge/github.com/opentofu/hcl-lang.svg)](https://pkg.go.dev/github.com/opentofu/hcl-lang)
 
 This library provides basic building blocks for an HCL2-based
 language server in the form of a schema and a decoder.
@@ -53,8 +53,8 @@ For example (simplified Terraform `provider` block):
 
 ```go
 import (
-	"github.com/hashicorp/hcl-lang/lang"
-	"github.com/hashicorp/hcl-lang/schema"
+	"github.com/opentofu/hcl-lang/lang"
+	"github.com/opentofu/hcl-lang/schema"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -212,7 +212,7 @@ if err != nil {
 }
 ```
 
-See available methods in [the documentation](https://pkg.go.dev/github.com/hashicorp/hcl-lang/decoder#Decoder).
+See available methods in [the documentation](https://pkg.go.dev/github.com/opentofu/hcl-lang/decoder#Decoder).
 
 ## Experimental Status
 
