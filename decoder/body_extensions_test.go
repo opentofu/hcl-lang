@@ -5,7 +5,6 @@ package decoder
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -17,6 +16,149 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
+
+func TestCompletionAtPos_BodySchema_Extensions_SameBodyRefs(t *testing.T) {
+	ctx := t.Context()
+
+	testCases := []struct {
+		testName           string
+		bodySchema         *schema.BodySchema
+		referenceTargets   reference.Targets
+		cfg                string
+		pos                hcl.Pos
+		expectedCandidates lang.Candidates
+	}{
+		{
+			"sameBodyRefs allows references from within the same block",
+			&schema.BodySchema{
+				Blocks: map[string]*schema.BlockSchema{
+					"locals": {
+						Body: &schema.BodySchema{
+							Extensions: &schema.BodyExtensions{
+								SameBodyRefs: true,
+							},
+							AnyAttribute: &schema.AttributeSchema{
+								Constraint: schema.OneOf{
+									schema.Reference{OfType: cty.DynamicPseudoType},
+									schema.LiteralType{Type: cty.DynamicPseudoType},
+								},
+							},
+						},
+					},
+				},
+			},
+			reference.Targets{
+				{
+					Addr: lang.Address{
+						lang.RootStep{Name: "local"},
+						lang.AttrStep{Name: "one"},
+					},
+					ScopeId: lang.ScopeId("local"),
+					Type:    cty.Number,
+					RangePtr: &hcl.Range{
+						Filename: "test.tf",
+						Start:    hcl.Pos{Line: 2, Column: 3, Byte: 11},
+						End:      hcl.Pos{Line: 2, Column: 10, Byte: 18},
+					},
+					DefRangePtr: &hcl.Range{
+						Filename: "test.tf",
+						Start:    hcl.Pos{Line: 2, Column: 3, Byte: 11},
+						End:      hcl.Pos{Line: 2, Column: 6, Byte: 14},
+					},
+				},
+			},
+			`locals {
+  one = 1
+  two = local.
+}
+`,
+			hcl.Pos{Line: 3, Column: 15, Byte: 33},
+			lang.CompleteCandidates([]lang.Candidate{
+				{
+					Label:  "local.one",
+					Detail: "number",
+					Kind:   lang.ReferenceCandidateKind,
+					TextEdit: lang.TextEdit{
+						NewText: "local.one",
+						Snippet: "local.one",
+						Range: hcl.Range{
+							Filename: "test.tf",
+							Start:    hcl.Pos{Line: 3, Column: 9, Byte: 27},
+							End:      hcl.Pos{Line: 3, Column: 15, Byte: 33},
+						},
+					},
+				},
+			}),
+		},
+		{
+			"sameBodyRefs disabled does not allow references from within the same block",
+			&schema.BodySchema{
+				Blocks: map[string]*schema.BlockSchema{
+					"locals": {
+						Body: &schema.BodySchema{
+							AnyAttribute: &schema.AttributeSchema{
+								Constraint: schema.OneOf{
+									schema.Reference{OfType: cty.DynamicPseudoType},
+									schema.LiteralType{Type: cty.DynamicPseudoType},
+								},
+							},
+						},
+					},
+				},
+			},
+			reference.Targets{
+				{
+					Addr: lang.Address{
+						lang.RootStep{Name: "local"},
+						lang.AttrStep{Name: "one"},
+					},
+					ScopeId: lang.ScopeId("local"),
+					Type:    cty.Number,
+					RangePtr: &hcl.Range{
+						Filename: "test.tf",
+						Start:    hcl.Pos{Line: 2, Column: 3, Byte: 11},
+						End:      hcl.Pos{Line: 2, Column: 10, Byte: 18},
+					},
+					DefRangePtr: &hcl.Range{
+						Filename: "test.tf",
+						Start:    hcl.Pos{Line: 2, Column: 3, Byte: 11},
+						End:      hcl.Pos{Line: 2, Column: 6, Byte: 14},
+					},
+				},
+			},
+			`locals {
+  one = 1
+  two = local.
+}
+`,
+			hcl.Pos{Line: 3, Column: 15, Byte: 33},
+			lang.CompleteCandidates([]lang.Candidate{}),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			f, _ := hclsyntax.ParseConfig([]byte(tc.cfg), "test.tf", hcl.InitialPos)
+
+			d := testPathDecoder(t, &PathContext{
+				Schema: tc.bodySchema,
+				Files: map[string]*hcl.File{
+					"test.tf": f,
+				},
+				ReferenceTargets: tc.referenceTargets,
+			})
+
+			candidates, err := d.CompletionAtPos(ctx, "test.tf", tc.pos)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := cmp.Diff(tc.expectedCandidates, candidates); diff != "" {
+				t.Fatalf("unexpected candidates: %s", diff)
+			}
+		})
+	}
+}
 
 func TestCompletionAtPos_BodySchema_Extensions_Count(t *testing.T) {
 	ctx := context.Background()
@@ -605,8 +747,8 @@ variable "test" {
 		},
 	}
 
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("%d-%s", i, tc.testName), func(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
 			f, _ := hclsyntax.ParseConfig([]byte(tc.cfg), "test.tf", hcl.InitialPos)
 
 			d := testPathDecoder(t, &PathContext{
@@ -1120,8 +1262,8 @@ for_each =
 		},
 	}
 
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("%d-%s", i, tc.testName), func(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
 			f, _ := hclsyntax.ParseConfig([]byte(tc.cfg), "test.tf", hcl.InitialPos)
 
 			d := testPathDecoder(t, &PathContext{
@@ -1771,8 +1913,8 @@ func TestCompletionAtPos_BodySchema_Extensions_SelfRef(t *testing.T) {
 		},
 	}
 
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("%d-%s", i, tc.testName), func(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
 			f, _ := hclsyntax.ParseConfig([]byte(tc.cfg), "test.tf", hcl.InitialPos)
 
 			d := testPathDecoder(t, &PathContext{
@@ -2832,8 +2974,8 @@ resource "aws_elastic_beanstalk_environment" "example" {
 		},
 	}
 
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("%d-%s", i, tc.testName), func(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
 			f, _ := hclsyntax.ParseConfig([]byte(tc.cfg), "test.tf", hcl.InitialPos)
 
 			d := testPathDecoder(t, &PathContext{
