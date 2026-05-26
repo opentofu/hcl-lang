@@ -6,8 +6,8 @@ package decoder
 import (
 	"context"
 
-	"github.com/hashicorp/hcl-lang/lang"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/opentofu/hcl-lang/lang"
 )
 
 func (oo OneOf) HoverAtPos(ctx context.Context, pos hcl.Pos) *lang.HoverData {

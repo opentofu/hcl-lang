@@ -8,8 +8,8 @@ import (
 	"sort"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/hcl-lang/lang"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/opentofu/hcl-lang/lang"
 )
 
 // BodySchema describes schema of a body comprised of blocks or attributes

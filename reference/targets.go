@@ -8,8 +8,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/hashicorp/hcl-lang/schema"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/opentofu/hcl-lang/schema"
 )
 
 type Targets []Target

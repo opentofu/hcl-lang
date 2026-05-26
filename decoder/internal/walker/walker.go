@@ -6,11 +6,11 @@ package walker
 import (
 	"context"
 
-	"github.com/hashicorp/hcl-lang/decoder/internal/schemahelper"
-	"github.com/hashicorp/hcl-lang/schema"
-	"github.com/hashicorp/hcl-lang/schemacontext"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/opentofu/hcl-lang/decoder/internal/schemahelper"
+	"github.com/opentofu/hcl-lang/schema"
+	"github.com/opentofu/hcl-lang/schemacontext"
 )
 
 type Walker interface {

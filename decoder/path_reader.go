@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/hcl-lang/lang"
+	"github.com/opentofu/hcl-lang/lang"
 )
 
 type PathReader interface {

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/hashicorp/hcl-lang/schema"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/opentofu/hcl-lang/schema"
 	"github.com/zclconf/go-cty/cty"
 )
 

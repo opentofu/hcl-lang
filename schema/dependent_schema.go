@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/hashicorp/hcl-lang/lang"
+	"github.com/opentofu/hcl-lang/lang"
 	"github.com/zclconf/go-cty/cty"
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 )

@@ -4,8 +4,8 @@
 package schemahelper
 
 import (
-	"github.com/hashicorp/hcl-lang/lang"
-	"github.com/hashicorp/hcl-lang/schema"
+	"github.com/opentofu/hcl-lang/lang"
+	"github.com/opentofu/hcl-lang/schema"
 	"github.com/zclconf/go-cty/cty"
 )
 

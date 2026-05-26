@@ -6,12 +6,12 @@ package decoder
 import (
 	"context"
 
-	"github.com/hashicorp/hcl-lang/decoder/internal/walker"
-	"github.com/hashicorp/hcl-lang/lang"
-	"github.com/hashicorp/hcl-lang/schema"
-	"github.com/hashicorp/hcl-lang/validator"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/opentofu/hcl-lang/decoder/internal/walker"
+	"github.com/opentofu/hcl-lang/lang"
+	"github.com/opentofu/hcl-lang/schema"
+	"github.com/opentofu/hcl-lang/validator"
 )
 
 // Validate returns a set of Diagnostics for all known files

@@ -6,7 +6,7 @@ package decoder
 import (
 	"context"
 
-	"github.com/hashicorp/hcl-lang/reference"
+	"github.com/opentofu/hcl-lang/reference"
 )
 
 func (oo OneOf) ReferenceTargets(ctx context.Context, targetCtx *TargetContext) reference.Targets {

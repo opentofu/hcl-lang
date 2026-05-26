@@ -6,7 +6,7 @@ package schema
 import (
 	"context"
 
-	"github.com/hashicorp/hcl-lang/lang"
+	"github.com/opentofu/hcl-lang/lang"
 )
 
 // Keyword represents a keyword, represented as hcl.Traversal

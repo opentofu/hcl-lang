@@ -9,12 +9,12 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/hcl-lang/decoder/internal/ast"
-	"github.com/hashicorp/hcl-lang/decoder/internal/schemahelper"
-	"github.com/hashicorp/hcl-lang/lang"
-	"github.com/hashicorp/hcl-lang/schema"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/opentofu/hcl-lang/decoder/internal/ast"
+	"github.com/opentofu/hcl-lang/decoder/internal/schemahelper"
+	"github.com/opentofu/hcl-lang/lang"
+	"github.com/opentofu/hcl-lang/schema"
 	"github.com/zclconf/go-cty/cty"
 )
 

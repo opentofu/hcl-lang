@@ -10,10 +10,10 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/hashicorp/hcl-lang/lang"
-	"github.com/hashicorp/hcl-lang/schema"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/opentofu/hcl-lang/lang"
+	"github.com/opentofu/hcl-lang/schema"
 	"github.com/zclconf/go-cty/cty"
 )
 

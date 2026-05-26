@@ -6,7 +6,7 @@ package decoder
 import (
 	"context"
 
-	"github.com/hashicorp/hcl-lang/lang"
+	"github.com/opentofu/hcl-lang/lang"
 )
 
 func (oo OneOf) SemanticTokens(ctx context.Context) []lang.SemanticToken {

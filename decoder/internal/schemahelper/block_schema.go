@@ -4,8 +4,8 @@
 package schemahelper
 
 import (
-	"github.com/hashicorp/hcl-lang/schema"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/opentofu/hcl-lang/schema"
 )
 
 func MergeBlockBodySchemas(block *hcl.Block, blockSchema *schema.BlockSchema) (*schema.BodySchema, LookupResult) {

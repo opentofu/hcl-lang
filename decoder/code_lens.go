@@ -7,7 +7,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/hcl-lang/lang"
+	"github.com/opentofu/hcl-lang/lang"
 )
 
 // CodeLensesForFile executes any code lenses in the order declared

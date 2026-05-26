@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/hcl-lang/schema"
-	"github.com/hashicorp/hcl-lang/schemacontext"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/opentofu/hcl-lang/schema"
+	"github.com/opentofu/hcl-lang/schemacontext"
 )
 
 func TestWalk_basic(t *testing.T) {

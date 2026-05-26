@@ -4,10 +4,10 @@
 package decoder
 
 import (
-	"github.com/hashicorp/hcl-lang/decoder/internal/ast"
-	"github.com/hashicorp/hcl-lang/decoder/internal/schemahelper"
-	"github.com/hashicorp/hcl-lang/schema"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/opentofu/hcl-lang/decoder/internal/ast"
+	"github.com/opentofu/hcl-lang/decoder/internal/schemahelper"
+	"github.com/opentofu/hcl-lang/schema"
 )
 
 type WriteOnlyAttribute struct {

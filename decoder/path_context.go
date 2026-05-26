@@ -7,10 +7,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/hcl-lang/reference"
-	"github.com/hashicorp/hcl-lang/schema"
-	"github.com/hashicorp/hcl-lang/validator"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/opentofu/hcl-lang/reference"
+	"github.com/opentofu/hcl-lang/schema"
+	"github.com/opentofu/hcl-lang/validator"
 )
 
 // PathContext represents any context relevant to the lang.Path

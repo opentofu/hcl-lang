@@ -10,10 +10,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/hcl-lang/lang"
-	"github.com/hashicorp/hcl-lang/schema"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/opentofu/hcl-lang/lang"
+	"github.com/opentofu/hcl-lang/schema"
 )
 
 func (d *PathDecoder) labelCandidatesFromDependentSchema(idx int, db map[schema.SchemaKey]*schema.BodySchema, prefixRng, editRng hcl.Range, block *hclsyntax.Block, labelSchemas []*schema.LabelSchema) (lang.Candidates, error) {

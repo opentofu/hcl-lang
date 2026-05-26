@@ -4,7 +4,7 @@
 package schema
 
 import (
-	"github.com/hashicorp/hcl-lang/lang"
+	"github.com/opentofu/hcl-lang/lang"
 )
 
 // LabelSchema describes schema for a label on a particular position

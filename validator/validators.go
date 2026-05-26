@@ -6,9 +6,9 @@ package validator
 import (
 	"context"
 
-	"github.com/hashicorp/hcl-lang/schema"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/opentofu/hcl-lang/schema"
 )
 
 type Validator interface {

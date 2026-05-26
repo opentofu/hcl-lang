@@ -4,8 +4,8 @@
 package reference
 
 import (
-	"github.com/hashicorp/hcl-lang/lang"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/opentofu/hcl-lang/lang"
 )
 
 func TraversalToLocalOrigin(traversal hcl.Traversal, cons OriginConstraints, allowSelfRefs bool) (LocalOrigin, bool) {
