@@ -10,15 +10,18 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/hcl-lang/lang"
+	"github.com/hashicorp/hcl-lang/reference"
 	"github.com/hashicorp/hcl-lang/schema"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
 )
 
 func TestCompletionAtPos_exprOneOf(t *testing.T) {
 	testCases := []struct {
 		testName           string
 		attrSchema         map[string]*schema.AttributeSchema
+		refTargets         reference.Targets
 		cfg                string
 		pos                hcl.Pos
 		expectedCandidates lang.Candidates
@@ -40,8 +43,9 @@ func TestCompletionAtPos_exprOneOf(t *testing.T) {
 					},
 				},
 			},
-			`attr = 
-`,
+			nil,
+			`attr =
+		`,
 			hcl.Pos{Line: 1, Column: 8, Byte: 7},
 			lang.CompleteCandidates([]lang.Candidate{
 				{
@@ -105,8 +109,9 @@ func TestCompletionAtPos_exprOneOf(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			`attr = akey
-`,
+		`,
 			hcl.Pos{Line: 1, Column: 12, Byte: 11},
 			lang.CompleteCandidates([]lang.Candidate{
 				{
@@ -142,8 +147,9 @@ func TestCompletionAtPos_exprOneOf(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			`attr = key
-`,
+		`,
 			hcl.Pos{Line: 1, Column: 11, Byte: 10},
 			lang.CompleteCandidates([]lang.Candidate{
 				{
@@ -183,10 +189,51 @@ func TestCompletionAtPos_exprOneOf(t *testing.T) {
 					Constraint: schema.OneOf{},
 				},
 			},
-			`attr = 
-`,
+			nil,
+			`attr =
+		`,
 			hcl.Pos{Line: 1, Column: 8, Byte: 7},
 			lang.CompleteCandidates([]lang.Candidate{}),
+		},
+		{
+			"no duplicate references across for_each constraints",
+			// Based on attribute_extensions.go ForEachAttributeSchema
+			map[string]*schema.AttributeSchema{
+				"attr": {
+					Constraint: schema.OneOf{
+						schema.AnyExpression{OfType: cty.Map(cty.DynamicPseudoType)},
+						schema.AnyExpression{OfType: cty.Set(cty.String)},
+						schema.AnyExpression{OfType: cty.EmptyObject},
+					},
+				},
+			},
+			reference.Targets{
+				{
+					Addr: lang.Address{
+						lang.RootStep{Name: "local"},
+						lang.AttrStep{Name: "some_set"},
+					},
+					Type: cty.DynamicPseudoType,
+				},
+			},
+			`attr = local.some`,
+			hcl.Pos{Line: 1, Column: 18, Byte: 17},
+			lang.CompleteCandidates([]lang.Candidate{
+				{
+					Label:  "local.some_set",
+					Detail: "dynamic",
+					Kind:   lang.ReferenceCandidateKind,
+					TextEdit: lang.TextEdit{
+						NewText: "local.some_set",
+						Snippet: "local.some_set",
+						Range: hcl.Range{
+							Filename: "test.tf",
+							Start:    hcl.Pos{Line: 1, Column: 8, Byte: 7},
+							End:      hcl.Pos{Line: 1, Column: 18, Byte: 17},
+						},
+					},
+				},
+			}),
 		},
 	}
 
@@ -202,6 +249,7 @@ func TestCompletionAtPos_exprOneOf(t *testing.T) {
 				Files: map[string]*hcl.File{
 					"test.tf": f,
 				},
+				ReferenceTargets: tc.refTargets,
 			})
 
 			ctx := context.Background()

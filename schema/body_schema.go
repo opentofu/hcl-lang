@@ -59,6 +59,7 @@ type BodyExtensions struct {
 	DynamicBlocks bool // dynamic "block-name" w/ content & for_each inside
 	SelfRefs      bool // self.* refs
 	UnknownRefs   bool // collect reference origins from attributes/blocks not in schema
+	SameBodyRefs  bool // attributes in this body can reference sibling attributes
 }
 
 func (be *BodyExtensions) Copy() *BodyExtensions {
@@ -72,6 +73,7 @@ func (be *BodyExtensions) Copy() *BodyExtensions {
 		DynamicBlocks: be.DynamicBlocks,
 		SelfRefs:      be.SelfRefs,
 		UnknownRefs:   be.UnknownRefs,
+		SameBodyRefs:  be.SameBodyRefs,
 	}
 }
 
