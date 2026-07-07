@@ -1107,3 +1107,111 @@ func TestCollectReferenceOrigins_hcl_path(t *testing.T) {
 		})
 	}
 }
+
+func TestCollectReferenceOrigins_hcl_unknownRefs(t *testing.T) {
+	testCases := []struct {
+		name            string
+		schema          *schema.BodySchema
+		cfg             string
+		expectedOrigins reference.Origins
+	}{
+		{
+			"unknown attribute with UnknownRefs enabled",
+			&schema.BodySchema{
+				Blocks: map[string]*schema.BlockSchema{
+					"provider": {
+						Labels: []*schema.LabelSchema{{Name: "name"}},
+						Body: &schema.BodySchema{
+							Extensions: &schema.BodyExtensions{
+								UnknownRefs: true,
+							},
+						},
+					},
+				},
+			},
+			`provider "aws" {
+  region = var.region
+}`,
+			reference.Origins{
+				reference.LocalOrigin{
+					Addr: lang.Address{
+						lang.RootStep{Name: "var"},
+						lang.AttrStep{Name: "region"},
+					},
+					Constraints: reference.OriginConstraints{
+						{OfType: cty.DynamicPseudoType},
+					},
+					Range: hcl.Range{
+						Filename: "test.tf",
+						Start:    hcl.Pos{Line: 2, Column: 12, Byte: 28},
+						End:      hcl.Pos{Line: 2, Column: 22, Byte: 38},
+					},
+				},
+			},
+		},
+		{
+			"unknown attribute without UnknownRefs - no origins",
+			&schema.BodySchema{
+				Blocks: map[string]*schema.BlockSchema{
+					"provider": {
+						Labels: []*schema.LabelSchema{{Name: "name"}},
+						Body:   &schema.BodySchema{}, // No extension
+					},
+				},
+			},
+			`provider "aws" {
+  region = var.region
+}`,
+			reference.Origins{}, // Empty - current behavior preserved
+		},
+		{
+			"unknown block with UnknownRefs enabled",
+			&schema.BodySchema{
+				Extensions: &schema.BodyExtensions{
+					UnknownRefs: true,
+				},
+			},
+			`unknown_block "foo" {
+  attr = var.something
+}`,
+			reference.Origins{
+				reference.LocalOrigin{
+					Addr: lang.Address{
+						lang.RootStep{Name: "var"},
+						lang.AttrStep{Name: "something"},
+					},
+					Constraints: reference.OriginConstraints{
+						{OfType: cty.DynamicPseudoType},
+					},
+					Range: hcl.Range{
+						Filename: "test.tf",
+						Start:    hcl.Pos{Line: 2, Column: 10, Byte: 31},
+						End:      hcl.Pos{Line: 2, Column: 23, Byte: 44},
+					},
+				},
+			},
+		},
+	}
+
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("%2d-%s", i, tc.name), func(t *testing.T) {
+			f, _ := hclsyntax.ParseConfig([]byte(tc.cfg), "test.tf", hcl.InitialPos)
+
+			d := testPathDecoder(t, &PathContext{
+				Schema: tc.schema,
+				Files: map[string]*hcl.File{
+					"test.tf": f,
+				},
+			})
+
+			origins, err := d.CollectReferenceOrigins()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := cmp.Diff(tc.expectedOrigins, origins, ctydebug.CmpOptions); diff != "" {
+				t.Fatalf("mismatched reference origins: %s", diff)
+			}
+		})
+	}
+}
