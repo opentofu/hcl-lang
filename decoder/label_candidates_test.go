@@ -108,6 +108,156 @@ func TestDecoder_CandidateAtPos_incompleteLabels(t *testing.T) {
 	}
 }
 
+func TestDecoder_CandidateAtPos_incompleteLabel_errorRecoveredBlock(t *testing.T) {
+	bodySchema := &schema.BodySchema{
+		Blocks: map[string]*schema.BlockSchema{
+			"customblock": {
+				Labels: []*schema.LabelSchema{
+					{
+						Name:        "type",
+						IsDepKey:    true,
+						Completable: true,
+					},
+				},
+				DependentBody: map[schema.SchemaKey]*schema.BodySchema{
+					schema.NewSchemaKey(schema.DependencyKeys{
+						Labels: []schema.LabelDependent{
+							{
+								Index: 0,
+								Value: "first",
+							},
+						},
+					}): {
+						Attributes: map[string]*schema.AttributeSchema{
+							"attr1": {Constraint: schema.LiteralType{Type: cty.Number}},
+						},
+					},
+					schema.NewSchemaKey(schema.DependencyKeys{
+						Labels: []schema.LabelDependent{
+							{
+								Index: 0,
+								Value: "second",
+							},
+						},
+					}): {
+						Attributes: map[string]*schema.AttributeSchema{
+							"attr2": {Constraint: schema.LiteralType{Type: cty.Number}},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Incomplete block: no closing quote, no braces
+	f, _ := hclsyntax.ParseConfig([]byte(`customblock "fi`), "test.tf", hcl.InitialPos)
+
+	body := f.Body.(*hclsyntax.Body)
+	if len(body.Blocks) == 0 {
+		t.Fatal("expected parser error recovery to produce a block")
+	}
+	block := body.Blocks[0]
+	if len(block.LabelRanges) == 0 {
+		t.Fatal("expected parser error recovery to produce label ranges")
+	}
+
+	labelRange := block.LabelRanges[0]
+	if block.Range().ContainsPos(labelRange.Start) {
+		t.Log("note: block.Range() contains label start (precondition not as expected)")
+	}
+
+	t.Run("cursor at end of label range", func(t *testing.T) {
+		pos := labelRange.End
+
+		d := testPathDecoder(t, &PathContext{
+			Schema: bodySchema,
+			Files: map[string]*hcl.File{
+				"test.tf": f,
+			},
+		})
+		d.maxCandidates = 2
+
+		candidates, err := d.CompletionAtPos(t.Context(), "test.tf", pos)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(candidates.List) == 0 {
+			t.Fatal("expected at least one candidate")
+		}
+		if candidates.List[0].Kind != lang.LabelCandidateKind {
+			t.Fatalf("expected LabelCandidateKind, got %s", candidates.List[0].Kind)
+		}
+		// With prefix "fi", only "first" should match (not "second")
+		if len(candidates.List) != 1 {
+			t.Fatalf("expected 1 candidate (prefix-filtered by 'fi'), got %d", len(candidates.List))
+		}
+		if candidates.List[0].Label != "first" {
+			t.Fatalf("expected label 'first', got %q", candidates.List[0].Label)
+		}
+		if !candidates.IsComplete {
+			t.Fatal("expected candidates to be complete (not limited by maxCandidates)")
+		}
+	})
+
+	t.Run("cursor at end of label with trailing newline", func(t *testing.T) {
+		// Real-world case: editors append a trailing newline (ie, nvim)
+		fNl, _ := hclsyntax.ParseConfig([]byte("customblock \"fi\n"), "test.tf", hcl.InitialPos)
+		bodyNl := fNl.Body.(*hclsyntax.Body)
+		if len(bodyNl.Blocks) == 0 {
+			t.Fatal("expected parser error recovery to produce a block")
+		}
+		blockNl := bodyNl.Blocks[0]
+		// Cursor right after "fi" at byte 15, before the newline
+		pos := hcl.Pos{Line: 1, Column: 16, Byte: 15}
+
+		d := testPathDecoder(t, &PathContext{
+			Schema: bodySchema,
+			Files: map[string]*hcl.File{
+				"test.tf": fNl,
+			},
+		})
+		d.maxCandidates = 2
+
+		_ = blockNl // used for debugging
+		candidates, err := d.CompletionAtPos(t.Context(), "test.tf", pos)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(candidates.List) == 0 {
+			t.Fatal("expected at least one candidate")
+		}
+		if candidates.List[0].Kind != lang.LabelCandidateKind {
+			t.Fatalf("expected LabelCandidateKind, got %s", candidates.List[0].Kind)
+		}
+	})
+
+	t.Run("cursor inside label range", func(t *testing.T) {
+		// Position one byte into the label content
+		pos := labelRange.Start
+		pos.Byte++
+		pos.Column++
+
+		d := testPathDecoder(t, &PathContext{
+			Schema: bodySchema,
+			Files: map[string]*hcl.File{
+				"test.tf": f,
+			},
+		})
+		d.maxCandidates = 1
+
+		candidates, err := d.CompletionAtPos(t.Context(), "test.tf", pos)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(candidates.List) == 0 {
+			t.Fatal("expected at least one candidate")
+		}
+		if candidates.List[0].Kind != lang.LabelCandidateKind {
+			t.Fatalf("expected LabelCandidateKind, got %s", candidates.List[0].Kind)
+		}
+	})
+}
+
 func TestCompletionAtPos_prefillRequiredFields(t *testing.T) {
 	ctx := context.Background()
 	startingConfig := "resource \"\" {\n}"

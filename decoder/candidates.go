@@ -91,7 +91,8 @@ func (d *PathDecoder) completionAtPos(ctx context.Context, body *hclsyntax.Body,
 	}
 
 	for _, block := range body.Blocks {
-		if block.Range().ContainsPos(pos) {
+		blockRangeHasPos := block.Range().ContainsPos(pos)
+		if blockRangeHasPos || posInAnyLabelRange(block, pos) {
 			blockSchema, ok := bodySchema.Blocks[block.Type]
 			if !ok {
 				return lang.ZeroCandidates(), &PositionalError{
@@ -108,7 +109,7 @@ func (d *PathDecoder) completionAtPos(ctx context.Context, body *hclsyntax.Body,
 			}
 
 			for i, labelRange := range block.LabelRanges {
-				if labelRange.ContainsPos(pos) {
+				if labelRange.ContainsPos(pos) || (!blockRangeHasPos && labelRange.End.Byte == pos.Byte) {
 					if i+1 > len(blockSchema.Labels) {
 						return lang.ZeroCandidates(), &PositionalError{
 							Filename: filename,
@@ -272,6 +273,21 @@ func labelTokenRangeAtPos(tokens hclsyntax.Tokens, pos hcl.Pos) (hcl.Range, erro
 					return tokens[i-1].Range, nil
 				}
 			}
+			// unterminated string with trailing newline
+			if t.Type == hclsyntax.TokenQuotedNewline && i > 0 {
+				if tokens[i-1].Type == hclsyntax.TokenQuotedLit {
+					return tokens[i-1].Range, nil
+				}
+			}
+		}
+
+		// EOF token has zero length
+		// so we just compare start/end position
+		if t.Type == hclsyntax.TokenEOF && t.Range.Start == pos && t.Range.End == pos && i > 0 {
+			previousToken := tokens[i-1]
+			if previousToken.Type == hclsyntax.TokenQuotedLit {
+				return previousToken.Range, nil
+			}
 		}
 	}
 	return hcl.Range{}, fmt.Errorf("no valid token found at %s", stringPos(pos))
@@ -289,5 +305,17 @@ func isPosOutsideBody(block *hclsyntax.Block, pos hcl.Pos) bool {
 		return true
 	}
 
+	return false
+}
+
+// posInAnyLabelRange returns true if pos is inside or at the end of
+// any of the block's label ranges. This handles error-recovered blocks
+// where block.Range() may not cover the labels.
+func posInAnyLabelRange(block *hclsyntax.Block, pos hcl.Pos) bool {
+	for _, lr := range block.LabelRanges {
+		if lr.ContainsPos(pos) || lr.End.Byte == pos.Byte {
+			return true
+		}
+	}
 	return false
 }
