@@ -5,6 +5,7 @@ package reference
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/hashicorp/hcl-lang/lang"
 	"github.com/hashicorp/hcl-lang/schema"
@@ -199,13 +200,28 @@ func (target Target) Matches(origin MatchableOrigin) bool {
 			matchesCons = true
 			continue
 		}
-		if cons.OfType.IsTupleType() && cons.OfType.Length() == 0 && target.Type.IsTupleType() {
-			// This is a special case where we match an empty tuple (cty.EmptyTuple)
-			// against any tuple.
-			matchesCons = true
-			continue
+		if len(target.NestedTargets) == 0 {
+			// Account for the case where the origin address points into
+			// a collection or structural type via index or attribute steps
+			// which the target doesn't declare as nested targets.
+			// e.g. If var.foo target is of type map(list(string)),
+			// then var.foo["key"] is a match if list(string) satisfies
+			// the constraint.
+			//
+			// Targets with nested targets are skipped, so that the origin
+			// only matches the most specific (nested) target.
+			if prefixLen, ok := target.matchesNestedType(target.Addr, origin.Address(), cons); ok {
+				originAddr = origin.Address().FirstSteps(prefixLen)
+				matchesCons = true
+				continue
+			}
+			if prefixLen, ok := target.matchesNestedType(target.LocalAddr, origin.Address(), cons); ok {
+				localOriginAddr = origin.Address().FirstSteps(prefixLen)
+				matchesCons = true
+				continue
+			}
 		}
-		if cons.OfType != cty.NilType && target.IsConvertibleToType(cons.OfType) {
+		if typeMatchesConstraint(target.Type, cons) {
 			matchesCons = true
 		}
 		if cons.OfType == cty.NilType && target.Type == cty.NilType {
@@ -222,4 +238,109 @@ func (target Target) Matches(origin MatchableOrigin) bool {
 	}
 
 	return ((target.LocalAddr.Equals(localOriginAddr) && targetRangeMatches) || target.Addr.Equals(originAddr)) && matchesCons
+}
+
+// matchesNestedType checks whether originAddr points to a value nested
+// inside the target at targetAddr, and if so, whether the type of that
+// nested value satisfies the given constraint.
+// It returns the length of targetAddr when it does.
+func (target Target) matchesNestedType(targetAddr, originAddr lang.Address, cons OriginConstraint) (uint, bool) {
+	if len(targetAddr) == 0 || len(originAddr) <= len(targetAddr) {
+		return 0, false
+	}
+	prefixLen := uint(len(targetAddr))
+	if !targetAddr.Equals(originAddr.FirstSteps(prefixLen)) {
+		return 0, false
+	}
+
+	typ, ok := typeOfNestedSteps(target.Type, originAddr[prefixLen:])
+	if !ok {
+		return 0, false
+	}
+
+	return prefixLen, typeMatchesConstraint(typ, cons)
+}
+
+func typeMatchesConstraint(typ cty.Type, cons OriginConstraint) bool {
+	if cons.OfType.IsTupleType() && cons.OfType.Length() == 0 && typ.IsTupleType() {
+		// This is a special case where we match an empty tuple (cty.EmptyTuple)
+		// against any tuple.
+		return true
+	}
+	if cons.OfType != cty.NilType && (Target{Type: typ}).IsConvertibleToType(cons.OfType) {
+		return true
+	}
+	return false
+}
+
+// typeOfNestedSteps returns the type of the value found by following
+// the given index or attribute steps into a value of the given type.
+// It returns false if the steps cannot be applied to the type.
+func typeOfNestedSteps(typ cty.Type, steps lang.Address) (cty.Type, bool) {
+	for _, step := range steps {
+		if typ == cty.DynamicPseudoType {
+			// Any nested value of a dynamic value is dynamic too
+			return cty.DynamicPseudoType, true
+		}
+
+		switch s := step.(type) {
+		case lang.AttrStep:
+			switch {
+			case typ.IsObjectType():
+				if !typ.HasAttribute(s.Name) {
+					return cty.NilType, false
+				}
+				typ = typ.AttributeType(s.Name)
+			case typ.IsMapType():
+				typ = typ.ElementType()
+			default:
+				return cty.NilType, false
+			}
+		case lang.IndexStep:
+			nestedType, ok := typeOfIndex(typ, s.Key)
+			if !ok {
+				return cty.NilType, false
+			}
+			typ = nestedType
+		default:
+			return cty.NilType, false
+		}
+	}
+
+	return typ, true
+}
+
+func typeOfIndex(typ cty.Type, key cty.Value) (cty.Type, bool) {
+	if key.IsNull() || !key.IsKnown() {
+		return cty.NilType, false
+	}
+
+	switch {
+	case typ.IsListType():
+		if key.Type() != cty.Number {
+			return cty.NilType, false
+		}
+		return typ.ElementType(), true
+	case typ.IsMapType():
+		if key.Type() != cty.String {
+			return cty.NilType, false
+		}
+		return typ.ElementType(), true
+	case typ.IsTupleType():
+		if key.Type() != cty.Number {
+			return cty.NilType, false
+		}
+		idx, accuracy := key.AsBigFloat().Int64()
+		if accuracy != big.Exact || idx < 0 || idx >= int64(typ.Length()) {
+			return cty.NilType, false
+		}
+		return typ.TupleElementType(int(idx)), true
+	case typ.IsObjectType():
+		if key.Type() != cty.String || !typ.HasAttribute(key.AsString()) {
+			return cty.NilType, false
+		}
+		return typ.AttributeType(key.AsString()), true
+	}
+
+	return cty.NilType, false
 }
